@@ -14,11 +14,10 @@ import urllib2
 import errno
 
 import web
-import gv  # Get access to ospi's settings
-from urls import urls  # Get access to ospi's URLs
-from ospi import template_render
-from webpages import ProtectedPage
-
+#import gv  # Get access to ospi's settings
+#from urls import urls  # Get access to ospi's URLs
+#from ospi import template_render
+#from webpages import ProtectedPage
 
 def mkdir_p(path):
     try:
@@ -30,12 +29,12 @@ def mkdir_p(path):
             raise
 
 # Add a new url to open the data entry page.
-urls.extend(['/lwa',  'plugins.weather_level_adj.settings',
-             '/lwj',  'plugins.weather_level_adj.settings_json',
-             '/luwa', 'plugins.weather_level_adj.update'])
+# urls.extend(['/lwa',  'plugins.weather_level_adj.settings',
+#              '/lwj',  'plugins.weather_level_adj.settings_json',
+#              '/luwa', 'plugins.weather_level_adj.update'])
 
 # Add this plugin to the home page plugins menu
-gv.plugin_menu.append(['Weather-based Water Level', '/lwa'])
+# gv.plugin_menu.append(['Weather-based Water Level', '/lwa'])
 
 
 ################################################################################
@@ -140,7 +139,7 @@ class WeatherLevelChecker(Thread):
                     self.add_status('Irrigation needed    : %.1fmm' % water_left)
                     self.add_status('Weather Adjustment   : %.1f%%' % water_adjustment)
 
-                    gv.sd['wl_weather'] = water_adjustment
+                    #gv.sd['wl_weather'] = water_adjustment
 
                     self._sleep(3600)
 
@@ -153,37 +152,36 @@ class WeatherLevelChecker(Thread):
 
 checker = WeatherLevelChecker()
 
-
 ################################################################################
 # Web pages:                                                                   #
 ################################################################################
 
-class settings(ProtectedPage):
-    """Load an html page for entering weather-based irrigation adjustments"""
+# class settings(ProtectedPage):
+#     """Load an html page for entering weather-based irrigation adjustments"""
+#
+#     def GET(self):
+#         return template_render.weather_level_adj(options_data())
+#
+#
+# class settings_json(ProtectedPage):
+#     """Returns plugin settings in JSON format"""
+#
+#     def GET(self):
+#         web.header('Access-Control-Allow-Origin', '*')
+#         web.header('Content-Type', 'application/json')
+#         return json.dumps(options_data())
 
-    def GET(self):
-        return template_render.weather_level_adj(options_data())
 
-
-class settings_json(ProtectedPage):
-    """Returns plugin settings in JSON format"""
-
-    def GET(self):
-        web.header('Access-Control-Allow-Origin', '*')
-        web.header('Content-Type', 'application/json')
-        return json.dumps(options_data())
-
-
-class update(ProtectedPage):
-    """Save user input to weather_level_adj.json file"""
-    def GET(self):
-        qdict = web.input()
-        if 'auto_wl' not in qdict:
-            qdict['auto_wl'] = 'off'
-        with open('./data/weather_level_adj.json', 'w') as f:  # write the settings to file
-            json.dump(qdict, f)
-        checker.update()
-        raise web.seeother('/')
+# class update(ProtectedPage):
+#     """Save user input to weather_level_adj.json file"""
+#     def GET(self):
+#         qdict = web.input()
+#         if 'auto_wl' not in qdict:
+#             qdict['auto_wl'] = 'off'
+#         with open('./data/weather_level_adj.json', 'w') as f:  # write the settings to file
+#             json.dump(qdict, f)
+#         checker.update()
+#         raise web.seeother('/')
 
 
 ################################################################################
@@ -193,12 +191,12 @@ class update(ProtectedPage):
 def options_data():
     # Defaults:
     result = {
-        'auto_wl': 'off',
+        'auto_wl': 'on',
         'wl_min': 0,
         'wl_max': 200,
         'days_history': 3,
         'days_forecast': 3,
-        'wapikey': '',
+        'wapikey': 'e2cee09725527da1',
         'status': checker.status
     }
     try:
@@ -215,14 +213,15 @@ def options_data():
 
 # Resolve location to LID
 def get_wunderground_lid():
-    if re.search("pws:", gv.sd['loc']):
-        lid = gv.sd['loc']
-    else:
-        data = urllib2.urlopen("http://autocomplete.wunderground.com/aq?h=0&query="+urllib.quote_plus(gv.sd['loc']))
-        data = json.load(data)
-        if data is None:
-            return ""
-        lid = "zmw:" + data['RESULTS'][0]['zmw']
+    # if re.search("pws:", gv.sd['loc']):
+    #     lid = gv.sd['loc']
+    # else:
+    #data = urllib2.urlopen("http://autocomplete.wunderground.com/aq?h=0&query="+urllib.quote_plus(gv.sd['loc']))
+    data = urllib2.urlopen("http://autocomplete.wunderground.com/aq?h=0&query="+urllib.quote_plus("u"))
+    data = json.load(data)
+    if data is None:
+        return ""
+    lid = "zmw:" + data['RESULTS'][0]['zmw']
 
     return lid
 
@@ -293,6 +292,13 @@ def remove_data(prefixes):
 # Info queries:                                                                #
 ################################################################################
 
+def parse_float(s):
+    if s == "":
+        return 0
+    else:
+        return float(s)
+
+
 def history_info(obj):
     options = options_data()
     if int(options['days_history']) == 0:
@@ -320,10 +326,10 @@ def history_info(obj):
     for index, day_info in info.iteritems():
         try:
             result[index] = {
-                'temp_c': float(day_info['maxtempm']),
-                'rain_mm': float(day_info['precipm']),
-                'wind_ms': float(day_info['meanwindspdm']) / 3.6,
-                'humidity': float(day_info['humidity'])
+                'temp_c': parse_float(day_info['maxtempm']),
+                'rain_mm': parse_float(day_info['precipm']),
+                'wind_ms': parse_float(day_info['meanwindspdm']) / 3.6,
+                'humidity': parse_float(day_info['humidity'])
             }
         except ValueError:
             obj.add_status("Skipped wundergound data because of a parsing error for %s" % day_info['date']['pretty'])
@@ -348,10 +354,10 @@ def today_info(obj):
     result = []
     try:
         result = {
-            'temp_c': float(day_info['temp_c']),
-            'rain_mm': float(day_info['precip_today_metric']),
-            'wind_ms': float(day_info['wind_kph']) / 3.6,
-            'humidity': float(day_info['relative_humidity'].replace('%', ''))
+            'temp_c': parse_float(day_info['temp_c']),
+            'rain_mm': parse_float(day_info['precip_today_metric']),
+            'wind_ms': parse_float(day_info['wind_kph']) / 3.6,
+            'humidity': parse_float(day_info['relative_humidity'].replace('%', ''))
         }
     except ValueError:
         obj.add_status("Skipped wundergound data because of a parsing error for today")
@@ -381,13 +387,15 @@ def forecast_info(obj):
         if index <= int(options['days_forecast']):
             try:
                 result[index] = {
-                    'temp_c': float(day_info['high']['celsius']),
-                    'rain_mm': float(day_info['qpf_allday']['mm']),
-                    'wind_ms': float(day_info['avewind']['kph']) / 3.6,
-                    'humidity': float(day_info['avehumidity'])
+                    'temp_c': parse_float(day_info['high']['celsius']),
+                    'rain_mm': parse_float(day_info['qpf_allday']['mm']),
+                    'wind_ms': parse_float(day_info['avewind']['kph']) / 3.6,
+                    'humidity': parse_float(day_info['avehumidity'])
                 }
             except ValueError:
                 obj.add_status("Skipped wundergound data because of a parsing error for forecast day %s" % index)
                 continue
 
     return result
+
+checker.run()
