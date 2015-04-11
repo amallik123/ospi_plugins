@@ -19,6 +19,7 @@ from urls import urls  # Get access to ospi's URLs
 from ospi import template_render
 from webpages import ProtectedPage
 
+
 def mkdir_p(path):
     try:
         os.makedirs(path)
@@ -29,12 +30,12 @@ def mkdir_p(path):
             raise
 
 # Add a new url to open the data entry page.
- urls.extend(['/lwa',  'plugins.weather_level_adj.settings',
-              '/lwj',  'plugins.weather_level_adj.settings_json',
-              '/luwa', 'plugins.weather_level_adj.update'])
+urls.extend(['/lwa',  'plugins.weather_level_adj.settings',
+             '/lwj',  'plugins.weather_level_adj.settings_json',
+             '/luwa', 'plugins.weather_level_adj.update'])
 
 # Add this plugin to the home page plugins menu
- gv.plugin_menu.append(['Weather-based Water Level', '/lwa'])
+gv.plugin_menu.append(['Weather-based Water Level', '/lwa'])
 
 
 ################################################################################
@@ -139,7 +140,7 @@ class WeatherLevelChecker(Thread):
                     self.add_status('Irrigation needed    : %.1fmm' % water_left)
                     self.add_status('Weather Adjustment   : %.1f%%' % water_adjustment)
 
-                    #gv.sd['wl_weather'] = water_adjustment
+                    gv.sd['wl_weather'] = water_adjustment
 
                     self._sleep(3600)
 
@@ -152,36 +153,37 @@ class WeatherLevelChecker(Thread):
 
 checker = WeatherLevelChecker()
 
+
 ################################################################################
 # Web pages:                                                                   #
 ################################################################################
 
- class settings(ProtectedPage):
-     """Load an html page for entering weather-based irrigation adjustments"""
+class settings(ProtectedPage):
+    """Load an html page for entering weather-based irrigation adjustments"""
 
-     def GET(self):
-         return template_render.weather_level_adj(options_data())
-
-
- class settings_json(ProtectedPage):
-     """Returns plugin settings in JSON format"""
-
-     def GET(self):
-         web.header('Access-Control-Allow-Origin', '*')
-         web.header('Content-Type', 'application/json')
-         return json.dumps(options_data())
+    def GET(self):
+        return template_render.weather_level_adj(options_data())
 
 
- class update(ProtectedPage):
-#     """Save user input to weather_level_adj.json file"""
-     def GET(self):
-         qdict = web.input()
-         if 'auto_wl' not in qdict:
-             qdict['auto_wl'] = 'off'
-         with open('./data/weather_level_adj.json', 'w') as f:  # write the settings to file
-             json.dump(qdict, f)
-         checker.update()
-         raise web.seeother('/')
+class settings_json(ProtectedPage):
+    """Returns plugin settings in JSON format"""
+
+    def GET(self):
+        web.header('Access-Control-Allow-Origin', '*')
+        web.header('Content-Type', 'application/json')
+        return json.dumps(options_data())
+
+
+class update(ProtectedPage):
+    """Save user input to weather_level_adj.json file"""
+    def GET(self):
+        qdict = web.input()
+        if 'auto_wl' not in qdict:
+            qdict['auto_wl'] = 'off'
+        with open('./data/weather_level_adj.json', 'w') as f:  # write the settings to file
+            json.dump(qdict, f)
+        checker.update()
+        raise web.seeother('/')
 
 
 ################################################################################
@@ -191,12 +193,12 @@ checker = WeatherLevelChecker()
 def options_data():
     # Defaults:
     result = {
-        'auto_wl': 'on',
+        'auto_wl': 'off',
         'wl_min': 0,
         'wl_max': 200,
         'days_history': 3,
         'days_forecast': 3,
-        'wapikey': 'e2cee09725527da1',
+        'wapikey': '',
         'status': checker.status
     }
     try:
@@ -213,14 +215,14 @@ def options_data():
 
 # Resolve location to LID
 def get_wunderground_lid():
-     if re.search("pws:", gv.sd['loc']):
-         lid = gv.sd['loc']
-     else:
-    data = urllib2.urlopen("http://autocomplete.wunderground.com/aq?h=0&query="+urllib.quote_plus(gv.sd['loc']))
-    data = json.load(data)
-    if data is None:
-        return ""
-    lid = "zmw:" + data['RESULTS'][0]['zmw']
+    if re.search("pws:", gv.sd['loc']):
+        lid = gv.sd['loc']
+    else:
+        data = urllib2.urlopen("http://autocomplete.wunderground.com/aq?h=0&query="+urllib.quote_plus(gv.sd['loc']))
+        data = json.load(data)
+        if data is None:
+            return ""
+        lid = "zmw:" + data['RESULTS'][0]['zmw']
 
     return lid
 
@@ -287,16 +289,15 @@ def remove_data(prefixes):
             check_date -= day_delta
 
 
-################################################################################
-# Info queries:                                                                #
-################################################################################
-
 def parse_float(s):
     if s == "":
         return 0
     else:
         return float(s)
 
+################################################################################
+# Info queries:                                                                #
+################################################################################
 
 def history_info(obj):
     options = options_data()
@@ -396,5 +397,3 @@ def forecast_info(obj):
                 continue
 
     return result
-
-checker.run()
