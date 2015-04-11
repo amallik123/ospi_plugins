@@ -14,10 +14,10 @@ import urllib2
 import errno
 
 import web
-#import gv  # Get access to ospi's settings
-#from urls import urls  # Get access to ospi's URLs
-#from ospi import template_render
-#from webpages import ProtectedPage
+import gv  # Get access to ospi's settings
+from urls import urls  # Get access to ospi's URLs
+from ospi import template_render
+from webpages import ProtectedPage
 
 def mkdir_p(path):
     try:
@@ -29,12 +29,12 @@ def mkdir_p(path):
             raise
 
 # Add a new url to open the data entry page.
-# urls.extend(['/lwa',  'plugins.weather_level_adj.settings',
-#              '/lwj',  'plugins.weather_level_adj.settings_json',
-#              '/luwa', 'plugins.weather_level_adj.update'])
+ urls.extend(['/lwa',  'plugins.weather_level_adj.settings',
+              '/lwj',  'plugins.weather_level_adj.settings_json',
+              '/luwa', 'plugins.weather_level_adj.update'])
 
 # Add this plugin to the home page plugins menu
-# gv.plugin_menu.append(['Weather-based Water Level', '/lwa'])
+ gv.plugin_menu.append(['Weather-based Water Level', '/lwa'])
 
 
 ################################################################################
@@ -156,32 +156,32 @@ checker = WeatherLevelChecker()
 # Web pages:                                                                   #
 ################################################################################
 
-# class settings(ProtectedPage):
-#     """Load an html page for entering weather-based irrigation adjustments"""
-#
-#     def GET(self):
-#         return template_render.weather_level_adj(options_data())
-#
-#
-# class settings_json(ProtectedPage):
-#     """Returns plugin settings in JSON format"""
-#
-#     def GET(self):
-#         web.header('Access-Control-Allow-Origin', '*')
-#         web.header('Content-Type', 'application/json')
-#         return json.dumps(options_data())
+ class settings(ProtectedPage):
+     """Load an html page for entering weather-based irrigation adjustments"""
+
+     def GET(self):
+         return template_render.weather_level_adj(options_data())
 
 
-# class update(ProtectedPage):
+ class settings_json(ProtectedPage):
+     """Returns plugin settings in JSON format"""
+
+     def GET(self):
+         web.header('Access-Control-Allow-Origin', '*')
+         web.header('Content-Type', 'application/json')
+         return json.dumps(options_data())
+
+
+ class update(ProtectedPage):
 #     """Save user input to weather_level_adj.json file"""
-#     def GET(self):
-#         qdict = web.input()
-#         if 'auto_wl' not in qdict:
-#             qdict['auto_wl'] = 'off'
-#         with open('./data/weather_level_adj.json', 'w') as f:  # write the settings to file
-#             json.dump(qdict, f)
-#         checker.update()
-#         raise web.seeother('/')
+     def GET(self):
+         qdict = web.input()
+         if 'auto_wl' not in qdict:
+             qdict['auto_wl'] = 'off'
+         with open('./data/weather_level_adj.json', 'w') as f:  # write the settings to file
+             json.dump(qdict, f)
+         checker.update()
+         raise web.seeother('/')
 
 
 ################################################################################
@@ -213,11 +213,10 @@ def options_data():
 
 # Resolve location to LID
 def get_wunderground_lid():
-    # if re.search("pws:", gv.sd['loc']):
-    #     lid = gv.sd['loc']
-    # else:
-    #data = urllib2.urlopen("http://autocomplete.wunderground.com/aq?h=0&query="+urllib.quote_plus(gv.sd['loc']))
-    data = urllib2.urlopen("http://autocomplete.wunderground.com/aq?h=0&query="+urllib.quote_plus("u"))
+     if re.search("pws:", gv.sd['loc']):
+         lid = gv.sd['loc']
+     else:
+    data = urllib2.urlopen("http://autocomplete.wunderground.com/aq?h=0&query="+urllib.quote_plus(gv.sd['loc']))
     data = json.load(data)
     if data is None:
         return ""
